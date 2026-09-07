@@ -68,7 +68,11 @@ def index():
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.name.data).first()
         if user is None:
-            user = User(username=form.name.data)
+            # Busca a role 'User' no banco de dados
+            user_role = Role.query.filter_by(name='User').first()
+
+            # Cria o novo usuário associado à role 'User'
+            user = User(username=form.name.data, role=user_role)
             db.session.add(user)
             db.session.commit()
             session['known'] = False
@@ -76,5 +80,9 @@ def index():
             session['known'] = True
         session['name'] = form.name.data
         return redirect(url_for('index'))
+
+    # Consulta todos os usuários cadastrados para exibir na tabela
+    users = User.query.all()
+
     return render_template('index.html', form=form, name=session.get('name'),
-                           known=session.get('known', False))
+                           known=session.get('known', False), users=users)
