@@ -3,7 +3,7 @@ from flask import Flask, render_template, session, redirect, url_for
 from flask_bootstrap import Bootstrap
 from flask_moment import Moment
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField
+from wtforms import StringField, SubmitField, SelectField
 from wtforms.validators import DataRequired
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -12,7 +12,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'hard to guess string'
-app.config['SQLALCHEMY_DATABASE_URI'] =\
+app.config['SQLALCHEMY_DATABASE_URI'] = \
     'sqlite:///' + os.path.join(basedir, 'data.sqlite')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -44,6 +44,7 @@ class User(db.Model):
 
 class NameForm(FlaskForm):
     name = StringField('What is your name?', validators=[DataRequired()])
+    role = SelectField('Role?:', coerce=int)
     submit = SubmitField('Submit')
 
 
@@ -65,14 +66,22 @@ def internal_server_error(e):
 @app.route('/', methods=['GET', 'POST'])
 def index():
     form = NameForm()
+
+    # Ordem personalizada para exibição das roles
+    desired_order = ['Administrator', 'Moderator', 'User']
+
+    # Busca todas as roles do banco e ordena na sequência exata desejada
+    roles_all = Role.query.all()
+    roles = sorted(roles_all, key=lambda r: desired_order.index(r.name) if r.name in desired_order else 99)
+
+    # Popula o SelectField com as escolhas ordenadas
+    form.role.choices = [(role.id, role.name) for role in roles]
+
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.name.data).first()
         if user is None:
-            # Busca a role 'User' no banco de dados
-            user_role = Role.query.filter_by(name='User').first()
-
-            # Cria o novo usuário associado à role 'User'
-            user = User(username=form.name.data, role=user_role)
+            selected_role = Role.query.get(form.role.data)
+            user = User(username=form.name.data, role=selected_role)
             db.session.add(user)
             db.session.commit()
             session['known'] = False
@@ -81,8 +90,27 @@ def index():
         session['name'] = form.name.data
         return redirect(url_for('index'))
 
-    # Consulta todos os usuários cadastrados para exibir na tabela
+    # Consultas para as tabelas e contadores
     users = User.query.all()
+    num_users = len(users)
+    num_roles = len(roles)
 
-    return render_template('index.html', form=form, name=session.get('name'),
-                           known=session.get('known', False), users=users)
+    return render_template('index.html',
+                           form=form,
+                           name=session.get('name'),
+                           known=session.get('known', False),
+                           users=users,
+                           roles=roles,
+                           num_users=num_users,
+                           num_roles=num_roles)
+
+with app.app_context():
+    db.create_all()
+    roles = ['Administrator', 'Moderator', 'User']
+    for r in roles:
+        if not Role.query.filter_by(name=r).first():
+            db.session.add(Role(name=r))
+    db.session.commit()
+
+if __name__ == '__main__':
+    app.run(debug=True)
