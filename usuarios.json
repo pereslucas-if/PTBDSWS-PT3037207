@@ -1,0 +1,30 @@
+[
+    {
+        "nome": "john",
+        "funcao": "Administrator"
+    },
+    {
+        "nome": "Lucas",
+        "funcao": "User"
+    },
+    {
+        "nome": "Maria",
+        "funcao": "User"
+    },
+    {
+        "nome": "Pedro",
+        "funcao": "User"
+    },
+    {
+        "nome": "comendoa",
+        "funcao": "User"
+    },
+    {
+        "nome": "Lucas Peres Games",
+        "funcao": "User"
+    },
+    {
+        "nome": "Lucas Peres sem Games",
+        "funcao": "User"
+    }
+]
