@@ -3,6 +3,8 @@ import requests
 from threading import Thread
 from dotenv import load_dotenv
 import json
+import sqlite3
+from datetime import datetime
 
 from flask import Flask, render_template, session, redirect, url_for, flash
 from flask_bootstrap import Bootstrap
@@ -18,6 +20,70 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '.env'))
 
 USERS_FILE = os.path.join(basedir, 'usuarios.json')
+DATABASE_FILE = os.path.join(basedir, 'emails.db')
+
+MODO_PROFESSOR = True
+
+
+def inicializar_banco():
+    conexao = sqlite3.connect(DATABASE_FILE)
+
+    cursor = conexao.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS emails (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            de TEXT NOT NULL,
+            para TEXT NOT NULL,
+            assunto TEXT NOT NULL,
+            texto TEXT NOT NULL,
+            data_hora TEXT NOT NULL
+        )
+    """)
+
+    conexao.commit()
+    conexao.close()
+
+
+def salvar_email(de, destinatarios, assunto, texto):
+    conexao = sqlite3.connect(DATABASE_FILE)
+
+    cursor = conexao.cursor()
+
+    cursor.execute("""
+        INSERT INTO emails
+        (de, para, assunto, texto, data_hora)
+        VALUES (?, ?, ?, ?, ?)
+    """, (
+        de,
+        '\n'.join(destinatarios),
+        assunto,
+        texto,
+        datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+    ))
+
+    conexao.commit()
+    conexao.close()
+
+
+def carregar_emails():
+    conexao = sqlite3.connect(DATABASE_FILE)
+
+    conexao.row_factory = sqlite3.Row
+
+    cursor = conexao.cursor()
+
+    cursor.execute("""
+        SELECT *
+        FROM emails
+        ORDER BY id DESC
+    """)
+
+    emails = cursor.fetchall()
+
+    conexao.close()
+
+    return emails
 
 
 def carregar_usuarios():
@@ -56,6 +122,7 @@ def adicionar_usuario(nome):
     })
 
     salvar_usuarios(usuarios)
+
     return True
 
 
@@ -92,6 +159,8 @@ bootstrap = Bootstrap(app)
 
 moment = Moment(app)
 
+inicializar_banco()
+
 
 class NameForm(FlaskForm):
 
@@ -111,8 +180,10 @@ def send_async_email(
     app_context,
     recipients,
     subject,
-    html_content
+    html_content,
+    username
 ):
+
     with app_context:
 
         api_key = app.config['API_KEY']
@@ -142,7 +213,11 @@ def send_async_email(
                     f'Status: {response.status_code}'
                 )
 
-                if response.status_code >= 400:
+                if response.status_code < 400:
+                    print(
+                        f'[Mailgun] E-mail enviado para {recipient}'
+                    )
+                else:
                     print(
                         f'[Mailgun] Resposta: {response.text}'
                     )
@@ -165,11 +240,19 @@ def send_email(
         app.config['MY_INSTITUTIONAL_EMAIL']
     ]
 
-    if send_to_primary:
+    if not send_to_primary:
 
-        recipients.append(
-            'flaskaulasweb@zohomail.com'
-        )
+        if MODO_PROFESSOR:
+
+            recipients.append(
+                app.config['FLASKY_ADMIN']
+            )
+
+        else:
+
+            recipients.append(
+                app.config['MY_PRIMARY_EMAIL']
+            )
 
     full_subject = (
         app.config['FLASKY_MAIL_SUBJECT_PREFIX']
@@ -177,24 +260,36 @@ def send_email(
         + subject
     )
 
+    email_text = (
+        'Novo usuário cadastrado: '
+        + new_username
+    )
+
     html_content = f"""
     <h3>Novo Usuário Cadastrado</h3>
 
     <p>
-        <b>Prontuário do Aluno:</b>
+        <b>Prontuário:</b>
         {app.config['STUDENT_ID']}
     </p>
 
     <p>
-        <b>Nome do Aluno:</b>
+        <b>Nome do aluno:</b>
         {app.config['STUDENT_NAME']}
     </p>
 
     <p>
-        <b>Novo Usuário Cadastrado:</b>
+        <b>Novo usuário cadastrado:</b>
         {new_username}
     </p>
     """
+
+    salvar_email(
+        de=new_username,
+        destinatarios=recipients,
+        assunto=full_subject,
+        texto=email_text
+    )
 
     thr = Thread(
         target=send_async_email,
@@ -202,7 +297,8 @@ def send_email(
             app.app_context(),
             recipients,
             full_subject,
-            html_content
+            html_content,
+            new_username
         ]
     )
 
@@ -229,16 +325,19 @@ def internal_server_error(e):
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
+
     form = NameForm()
 
     if form.validate_on_submit():
+
         nome = form.name.data
 
         novo_usuario = adicionar_usuario(nome)
 
         if novo_usuario:
+
             send_email(
-                subject='Novo usuário cadastrado',
+                subject='Novo usuário',
                 new_username=nome,
                 send_to_primary=form.send_email.data
             )
@@ -246,13 +345,24 @@ def index():
             session['name'] = nome
 
             if form.send_email.data:
-                flash('Usuário cadastrado e e-mail enviado.')
+
+                flash(
+                    'Usuário cadastrado e e-mail enviado.'
+                )
+
             else:
-                flash('Usuário cadastrado e e-mail institucional enviado.')
+
+                flash(
+                    'Usuário cadastrado e e-mails enviados.'
+                )
 
         else:
+
             session['name'] = nome
-            flash('Esse usuário já está cadastrado.')
+
+            flash(
+                'Esse usuário já está cadastrado.'
+            )
 
         return redirect(url_for('index'))
 
@@ -263,6 +373,17 @@ def index():
         form=form,
         name=session.get('name'),
         usuarios=usuarios
+    )
+
+
+@app.route('/emailsEnviados')
+def emails_enviados():
+
+    emails = carregar_emails()
+
+    return render_template(
+        'emailsEnviados.html',
+        emails=emails
     )
 
 

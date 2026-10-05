@@ -1,30 +1,22 @@
 [
     {
-        "nome": "john",
-        "funcao": "Administrator"
-    },
-    {
-        "nome": "Lucas",
+        "nome": "teste",
         "funcao": "User"
     },
     {
-        "nome": "Maria",
+        "nome": "teste 2",
         "funcao": "User"
     },
     {
-        "nome": "Pedro",
+        "nome": "teste 3",
         "funcao": "User"
     },
     {
-        "nome": "comendoa",
+        "nome": "Lucas Peres",
         "funcao": "User"
     },
     {
-        "nome": "Lucas Peres Games",
-        "funcao": "User"
-    },
-    {
-        "nome": "Lucas Peres sem Games",
+        "nome": "Lucas Peres secreto",
         "funcao": "User"
     }
 ]
