@@ -59,24 +59,15 @@ def send_async_email(
 def send_email(
     subject,
     new_username,
-    send_to_primary=False
+    additional_email
 ):
     app = current_app._get_current_object()
 
     recipients = [
-        app.config['MY_INSTITUTIONAL_EMAIL']
+        app.config['FLASKY_ADMIN'],
+        app.config['MY_INSTITUTIONAL_EMAIL'],
+        additional_email
     ]
-
-    if send_to_primary:
-
-        if app.config['MODO_PROFESSOR']:
-            recipients.append(
-                app.config['FLASKY_ADMIN']
-            )
-        else:
-            recipients.append(
-                app.config['MY_PRIMARY_EMAIL']
-        )
 
     full_subject = (
         app.config['FLASKY_MAIL_SUBJECT_PREFIX']

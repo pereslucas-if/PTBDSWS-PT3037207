@@ -32,15 +32,12 @@ def index():
             send_email(
                 subject='Novo usuário',
                 new_username=nome,
-                send_to_primary=form.send_email.data
+                additional_email=form.email.data
             )
 
             session['name'] = nome
 
-            if form.send_email.data:
-                flash('Usuário cadastrado e e-mail enviado.')
-            else:
-                flash('Usuário cadastrado e e-mails enviados.')
+            flash('Usuário cadastrado e e-mails enviados com sucesso.')
 
         else:
 

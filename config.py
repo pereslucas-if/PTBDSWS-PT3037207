@@ -6,9 +6,6 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '.env'))
 
 
-MODO_PROFESSOR = True
-
-
 class Config:
 
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'hard to guess string'
@@ -19,22 +16,22 @@ class Config:
 
     FLASKY_MAIL_SUBJECT_PREFIX = '[Flasky]'
 
+    # E-mail do professor
     FLASKY_ADMIN = os.environ.get('FLASKY_ADMIN')
 
-    MY_PRIMARY_EMAIL = os.environ.get('MY_PRIMARY_EMAIL')
-
+    # E-mail institucional do aluno
     MY_INSTITUTIONAL_EMAIL = os.environ.get(
         'MY_INSTITUTIONAL_EMAIL'
     )
 
+    # Nome do aluno
     STUDENT_NAME = os.environ.get(
         'STUDENT_NAME',
         'Lucas Peres Gomes'
     )
 
+    # Prontuário do aluno
     STUDENT_ID = os.environ.get(
         'STUDENT_ID',
         'PT3037207'
     )
-
-    MODO_PROFESSOR = MODO_PROFESSOR
